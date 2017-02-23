@@ -1041,7 +1041,7 @@ set (PCH_SOURCES
 )
 enable_precompiled_headers( g_pch.h PCH_SOURCES )
 
-add_executable( zdoom WIN32 MACOSX_BUNDLE
+add_executable( Whitman WIN32 MACOSX_BUNDLE
 	${HEADER_FILES}
 	${NOT_COMPILED_SOURCE_FILES}
 	__autostart.cpp
@@ -1087,7 +1087,7 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
 	set( ZDOOM_LIBS ${ZDOOM_LIBS} nsl socket)
 endif()
 
-target_link_libraries( zdoom ${ZDOOM_LIBS} gdtoa dumb lzma )
+target_link_libraries( Whitman ${ZDOOM_LIBS} gdtoa dumb lzma )
 include_directories( .
 	g_statusbar
 	g_shared
@@ -1104,16 +1104,16 @@ include_directories( .
 	${CMAKE_BINARY_DIR}/gdtoa
 	${SYSTEM_SOURCES_DIR} )
 
-add_dependencies( zdoom revision_check )
+add_dependencies( Whitman revision_check )
 
 # Due to some quirks, we need to do this in this order
 if( NOT ZDOOM_OUTPUT_OLDSTYLE )
 	# RUNTIME_OUTPUT_DIRECTORY does not exist in CMake 2.4.
 	# Linux distributions are slow to adopt 2.6. :(
-	set_target_properties( zdoom PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${ZDOOM_OUTPUT_DIR} )
-	set_target_properties( zdoom PROPERTIES OUTPUT_NAME ${ZDOOM_EXE_NAME} )
+	set_target_properties( Whitman PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${ZDOOM_OUTPUT_DIR} )
+	set_target_properties( Whitman PROPERTIES OUTPUT_NAME ${ZDOOM_EXE_NAME} )
 else()
-	set_target_properties( zdoom PROPERTIES
+	set_target_properties( Whitman PROPERTIES
 		RUNTIME_OUTPUT_NAME ${ZDOOM_EXE_NAME}
 		RUNTIME_OUTPUT_DIRECTORY_RELEASE ${ZDOOM_OUTPUT_DIR}
 		RUNTIME_OUTPUT_NAME_DEBUG ${ZDOOM_EXE_NAME}d
@@ -1134,19 +1134,19 @@ if( MSVC )
 	if( NOT NO_OPENAL )
 		set( LINKERSTUFF "${LINKERSTUFF} /DELAYLOAD:\"libmpg123-0.dll\" /DELAYLOAD:\"libsndfile-1.dll\"" )
 	endif()
-	set_target_properties(zdoom PROPERTIES LINK_FLAGS ${LINKERSTUFF})
+	set_target_properties(Whitman PROPERTIES LINK_FLAGS ${LINKERSTUFF})
 
-	add_custom_command(TARGET zdoom POST_BUILD
-		COMMAND "mt.exe" -manifest \"${CMAKE_CURRENT_SOURCE_DIR}\\win32\\zdoom.exe.manifest\" -outputresource:\"$<TARGET_FILE:zdoom>\"\;\#1
+	add_custom_command(TARGET Whitman POST_BUILD
+		COMMAND "mt.exe" -manifest \"${CMAKE_CURRENT_SOURCE_DIR}\\win32\\zdoom.exe.manifest\" -outputresource:\"$<TARGET_FILE:Whitman>\"\;\#1
 		COMMENT "Adding manifest..."
 	)
 
-	create_default_target_launcher( zdoom WORKING_DIRECTORY ${ZDOOM_OUTPUT_DIR} )
+	create_default_target_launcher( Whitman WORKING_DIRECTORY ${ZDOOM_OUTPUT_DIR} )
 endif()
 
 if( NOT WIN32 )
 	FILE( WRITE ${CMAKE_CURRENT_BINARY_DIR}/link-make "if [ ! -e ${ZDOOM_OUTPUT_DIR}/${ZDOOM_EXE_NAME} ]; then ln -sf ${CMAKE_CURRENT_BINARY_DIR}/${ZDOOM_EXE_NAME} ${ZDOOM_OUTPUT_DIR}/${ZDOOM_EXE_NAME}; fi" )
-	add_custom_command( TARGET zdoom POST_BUILD
+	add_custom_command( TARGET Whitman POST_BUILD
 		COMMAND chmod +x ${CMAKE_CURRENT_BINARY_DIR}/link-make
 		COMMAND /bin/sh -c ${CMAKE_CURRENT_BINARY_DIR}/link-make )
 endif()
@@ -1158,7 +1158,7 @@ if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
 endif()
 
 if( APPLE )
-	set_target_properties(zdoom PROPERTIES
+	set_target_properties(Whitman PROPERTIES
 		LINK_FLAGS "-framework Carbon -framework Cocoa -framework IOKit -framework OpenGL"
 		MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/posix/osx/zdoom-info.plist" )
 endif()
