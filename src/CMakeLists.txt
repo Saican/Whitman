@@ -1168,7 +1168,7 @@ if( WIN32 )
 else()
 	set( INSTALL_PATH bin CACHE STRING "Directory where the zdoom executable will be placed during install." )
 endif()
-install(TARGETS zdoom
+install(TARGETS Whitman
 		DESTINATION ${INSTALL_PATH}
 		COMPONENT "Game executable")
 

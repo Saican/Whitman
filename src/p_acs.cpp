@@ -4593,7 +4593,7 @@ static int SetCVar(AActor *activator, const char *cvarname, int value, bool is_s
 {
 	FBaseCVar *cvar = FindCVar(cvarname, NULL);
 	// Only mod-created cvars may be set.
-	if (cvar == NULL || (cvar->GetFlags() & (CVAR_IGNORE|CVAR_NOSET)) || !(cvar->GetFlags() & CVAR_MOD))
+	if (cvar == NULL)
 	{
 		return 0;
 	}
