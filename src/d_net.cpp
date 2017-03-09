@@ -2272,6 +2272,9 @@ void Net_DoCommand (int type, BYTE **stream, int player)
 	case DEM_INVDROP:
 		{
 			DWORD which = ReadLong (stream);
+			int amt = -1;
+
+			if (type == DEM_INVDROP) amt = ReadLong(stream);
 
 			if (gamestate == GS_LEVEL && !paused
 				&& players[player].playerstate != PST_DEAD)
@@ -2289,7 +2292,7 @@ void Net_DoCommand (int type, BYTE **stream, int player)
 					}
 					else
 					{
-						players[player].mo->DropInventory (item);
+						players[player].mo->DropInventory (item, amt);
 					}
 				}
 			}
@@ -2374,25 +2377,13 @@ void Net_DoCommand (int type, BYTE **stream, int player)
 		break;
 
 	case DEM_SPRAY:
-		{
-			FTraceResults trace;
+		s = ReadString(stream);
+		SprayDecal(players[player].mo, s);
+		break;
 
-			DAngle ang = players[player].mo->Angles.Yaw;
-			DAngle pitch = players[player].mo->Angles.Pitch;
-			double c = pitch.Cos();
-			DVector3 vec(c * ang.Cos(), c * ang.Sin(), -pitch.Sin());
-
-			s = ReadString (stream);
-
-			if (Trace (players[player].mo->PosPlusZ(players[player].mo->Height/2), players[player].mo->Sector, 
-				vec, 172., 0, ML_BLOCKEVERYTHING, players[player].mo, trace, TRACE_NoSky))
-			{
-				if (trace.HitType == TRACE_HitWall)
-				{
-					DImpactDecal::StaticCreate (s, trace.HitPos, trace.Line->sidedef[trace.Side], NULL);
-				}
-			}
-		}
+	case DEM_MDK:
+		s = ReadString(stream);
+		cht_DoMDK(&players[player], s);
 		break;
 
 	case DEM_PAUSE:
@@ -2681,12 +2672,13 @@ void Net_DoCommand (int type, BYTE **stream, int player)
 
 	case DEM_NETEVENT:
 		{
-			FString ename = ReadString(stream);
+			s = ReadString(stream);
 			int argn = ReadByte(stream);
 			int arg[3] = { 0, 0, 0 };
-			for (int i = 0; i < argn; i++)
+			for (int i = 0; i < 3; i++)
 				arg[i] = ReadLong(stream);
-			E_Console(player, ename, arg[0], arg[1], arg[2]);
+			bool manual = !!ReadByte(stream);
+			E_Console(player, s, arg[0], arg[1], arg[2], manual);
 		}
 		break;
 
@@ -2736,6 +2728,10 @@ void Net_SkipCommand (int type, BYTE **stream)
 			skip = strlen ((char *)(*stream)) + 5;
 			break;
 
+		case DEM_NETEVENT:
+			skip = strlen((char *)(*stream)) + 15;
+			break;
+
 		case DEM_SUMMON2:
 		case DEM_SUMMONFRIEND2:
 		case DEM_SUMMONFOE2:
@@ -2757,6 +2753,7 @@ void Net_SkipCommand (int type, BYTE **stream)
 		case DEM_SPRAY:
 		case DEM_MORPHEX:
 		case DEM_KILLCLASSCHEAT:
+		case DEM_MDK:
 			skip = strlen ((char *)(*stream)) + 1;
 			break;
 
@@ -2765,8 +2762,11 @@ void Net_SkipCommand (int type, BYTE **stream)
 			break;
 
 		case DEM_INVUSE:
-		case DEM_INVDROP:
 			skip = 4;
+			break;
+
+		case DEM_INVDROP:
+			skip = 8;
 			break;
 
 		case DEM_GENERICCHEAT:

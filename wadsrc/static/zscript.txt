@@ -1,3 +1,4 @@
+version "2.4"
 #include "zscript/base.txt"
 #include "zscript/sounddata.txt"
 #include "zscript/mapdata.txt"
@@ -24,6 +25,8 @@
 #include "zscript/menu/videomenu.txt"
 #include "zscript/menu/readthis.txt"
 #include "zscript/menu/conversationmenu.txt"
+
+#include "zscript/statscreen/types.txt"
 
 #include "zscript/inventory/inventory.txt"
 #include "zscript/inventory/inv_misc.txt"

@@ -223,6 +223,7 @@ enum ELevelFlags : unsigned int
 	
 	// More flags!
 	LEVEL3_FORCEFAKECONTRAST	= 0x00000001,	// forces fake contrast even with fog enabled
+	LEVEL3_REMOVEITEMS		= 0x00000002,	// kills all INVBAR items on map change.
 };
 
 
@@ -314,6 +315,8 @@ struct level_info_t
 	FName		Intermission;
 	FName		deathsequence;
 	FName		slideshow;
+	DWORD		hazardcolor;
+	DWORD		hazardflash;
 
 	// Redirection: If any player is carrying the specified item, then
 	// you go to the RedirectMap instead of this one.
@@ -324,6 +327,7 @@ struct level_info_t
 	FString		ExitPic;
 	FString 	InterMusic;
 	int			intermusicorder;
+	TMap <FName, std::pair<FString, int> > MapInterMusic;
 
 	FString		SoundInfo;
 	FString		SndSeq;
@@ -495,6 +499,7 @@ enum EFSkillProperty	// floating point properties
 	SKILLP_Aggressiveness,
 	SKILLP_MonsterHealth,
 	SKILLP_FriendlyHealth,
+	SKILLP_KickbackFactor,
 };
 
 int G_SkillProperty(ESkillProperty prop);
@@ -512,6 +517,7 @@ struct FSkillInfo
 	double DamageFactor;
 	double ArmorFactor;
 	double HealthFactor;
+	double KickbackFactor;
 
 	bool FastMonsters;
 	bool SlowMonsters;
@@ -520,6 +526,7 @@ struct FSkillInfo
 
 	bool EasyBossBrain;
 	bool EasyKey;
+	bool NoMenu;
 	int RespawnCounter;
 	int RespawnLimit;
 	double Aggressiveness;

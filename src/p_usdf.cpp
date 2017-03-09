@@ -121,7 +121,6 @@ class USDFParser : public UDMFParserBase
 	bool ParseChoice(FStrifeDialogueReply **&replyptr)
 	{
 		FStrifeDialogueReply *reply = new FStrifeDialogueReply;
-		memset(reply, 0, sizeof(*reply));
 
 		reply->Next = *replyptr;
 		*replyptr = reply;
@@ -193,8 +192,13 @@ class USDFParser : public UDMFParserBase
 
 				case NAME_Special:
 					reply->ActionSpecial = CheckInt(key);
-					if (reply->ActionSpecial < 0 || reply->ActionSpecial > 255)
+					if (reply->ActionSpecial < 0)
 						reply->ActionSpecial = 0;
+					break;
+
+				case NAME_SpecialName:
+					if (namespace_bits == Zd)
+						reply->ActionSpecial = P_FindLineSpecial(CheckString(key));
 					break;
 
 				case NAME_Arg0:
@@ -293,8 +297,6 @@ class USDFParser : public UDMFParserBase
 	{
 		FStrifeDialogueNode *node = new FStrifeDialogueNode;
 		FStrifeDialogueReply **replyptr = &node->Children;
-		memset(node, 0, sizeof(*node));
-		//node->ItemCheckCount[0] = node->ItemCheckCount[1] = node->ItemCheckCount[2] = -1;
 
 		node->ThisNodeNum = StrifeDialogues.Push(node);
 		node->ItemCheckNode = -1;

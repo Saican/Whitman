@@ -242,6 +242,7 @@ FString BackupSaveName;
 
 bool SendLand;
 const AInventory *SendItemUse, *SendItemDrop;
+int SendItemDropAmount;
 
 EXTERN_CVAR (Int, team)
 
@@ -347,6 +348,10 @@ CCMD (weapnext)
 		StatusBar->AttachMessage(new DHUDMessageFadeOut(SmallFont, SendItemUse->GetTag(),
 			1.5f, 0.90f, 0, 0, (EColorRange)*nametagcolor, 2.f, 0.35f), MAKE_ID( 'W', 'E', 'P', 'N' ));
 	}
+	if (SendItemUse != players[consoleplayer].ReadyWeapon)
+	{
+		S_Sound(CHAN_AUTO, "misc/weaponchange", 1.0, ATTN_NONE);
+	}
 }
 
 CCMD (weapprev)
@@ -358,6 +363,10 @@ CCMD (weapprev)
 		StatusBar->AttachMessage(new DHUDMessageFadeOut(SmallFont, SendItemUse->GetTag(),
 			1.5f, 0.90f, 0, 0, (EColorRange)*nametagcolor, 2.f, 0.35f), MAKE_ID( 'W', 'E', 'P', 'N' ));
 	}
+	if (SendItemUse != players[consoleplayer].ReadyWeapon)
+	{
+		S_Sound(CHAN_AUTO, "misc/weaponchange", 1.0, ATTN_NONE);
+	}
 }
 
 CCMD (invnext)
@@ -367,6 +376,7 @@ CCMD (invnext)
 	if (who == NULL)
 		return;
 
+	auto old = who->InvSel;
 	if (who->InvSel != NULL)
 	{
 		if ((next = who->InvSel->NextInv()) != NULL)
@@ -390,6 +400,10 @@ CCMD (invnext)
 			1.5f, 0.80f, 0, 0, (EColorRange)*nametagcolor, 2.f, 0.35f), MAKE_ID('S','I','N','V'));
 	}
 	who->player->inventorytics = 5*TICRATE;
+	if (old != who->InvSel)
+	{
+		S_Sound(CHAN_AUTO, "misc/invchange", 1.0, ATTN_NONE);
+	}
 }
 
 CCMD (invprev)
@@ -399,6 +413,7 @@ CCMD (invprev)
 	if (who == NULL)
 		return;
 
+	auto old = who->InvSel;
 	if (who->InvSel != NULL)
 	{
 		if ((item = who->InvSel->PrevInv()) != NULL)
@@ -420,6 +435,10 @@ CCMD (invprev)
 			1.5f, 0.80f, 0, 0, (EColorRange)*nametagcolor, 2.f, 0.35f), MAKE_ID('S','I','N','V'));
 	}
 	who->player->inventorytics = 5*TICRATE;
+	if (old != who->InvSel)
+	{
+		S_Sound(CHAN_AUTO, "misc/invchange", 1.0, ATTN_NONE);
+	}
 }
 
 CCMD (invuseall)
@@ -458,12 +477,14 @@ CCMD (invdrop)
 	if (players[consoleplayer].mo)
 	{
 		SendItemDrop = players[consoleplayer].mo->InvSel;
+		SendItemDropAmount = -1;
 	}
 }
 
 CCMD (weapdrop)
 {
 	SendItemDrop = players[consoleplayer].ReadyWeapon;
+	SendItemDropAmount = -1;
 }
 
 CCMD (drop)
@@ -471,6 +492,7 @@ CCMD (drop)
 	if (argv.argc() > 1 && who != NULL)
 	{
 		SendItemDrop = who->FindInventory(argv[1]);
+		SendItemDropAmount = argv.argc() > 2 ? atoi(argv[2]) : -1;
 	}
 }
 
@@ -763,6 +785,7 @@ void G_BuildTiccmd (ticcmd_t *cmd)
 	{
 		Net_WriteByte (DEM_INVDROP);
 		Net_WriteLong (SendItemDrop->InventoryID);
+		Net_WriteLong(SendItemDropAmount);
 		SendItemDrop = NULL;
 	}
 
@@ -1321,12 +1344,24 @@ void G_PlayerFinishLevel (int player, EFinishLevelType mode, int flags)
 
 	if (mode == FINISH_NoHub && !(level.flags2 & LEVEL2_KEEPFULLINVENTORY))
 	{ // Reduce all owned (visible) inventory to defined maximum interhub amount
+		TArray<AInventory*> todelete;
 		for (item = p->mo->Inventory; item != NULL; item = item->Inventory)
 		{
 			// If the player is carrying more samples of an item than allowed, reduce amount accordingly
 			if (item->ItemFlags & IF_INVBAR && item->Amount > item->InterHubAmount)
 			{
 				item->Amount = item->InterHubAmount;
+				if ((level.flags3 & LEVEL3_REMOVEITEMS) && !(item->ItemFlags & IF_UNDROPPABLE))
+				{
+					todelete.Push(item);
+				}
+			}
+		}
+		for (auto it : todelete)
+		{
+			if (!(it->ObjectFlags & OF_EuthanizeMe))
+			{
+				it->DepleteOrDestroy();
 			}
 		}
 	}
@@ -2236,7 +2271,29 @@ void G_DoSaveGame (bool okForQuicksave, FString filename, const char *descriptio
 		I_FreezeTime(true);
 
 	insave = true;
-	G_SnapshotLevel ();
+	try
+	{
+		G_SnapshotLevel();
+	}
+	catch(CRecoverableError &err)
+	{
+		// delete the snapshot. Since the save failed it is broken.
+		insave = false;
+		level.info->Snapshot.Clean();
+		Printf(PRINT_HIGH, "Save failed\n");
+		Printf(PRINT_HIGH, "%s\n", err.GetMessage());
+		// The time freeze must be reset if the save fails.
+		if (cl_waitforsave)
+			I_FreezeTime(false);
+		return;
+	}
+	catch (...)
+	{
+		insave = false;
+		if (cl_waitforsave)
+			I_FreezeTime(false);
+		throw;
+	}
 
 	BufferWriter savepic;
 	FSerializer savegameinfo;		// this is for displayable info about the savegame

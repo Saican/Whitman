@@ -56,6 +56,7 @@
 #include "menu/menu.h"
 #include "textures/textures.h"
 #include "virtual.h"
+#include "events.h"
 
 //
 // Todo: Move these elsewhere
@@ -64,6 +65,7 @@ CVAR (Float, mouse_sensitivity, 1.f, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 CVAR (Bool, show_messages, true, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 CVAR (Bool, show_obituaries, true, CVAR_ARCHIVE)
 CVAR(Bool, m_showinputgrid, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Bool, m_blockcontrollers, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
 
 CVAR (Float, snd_menuvolume, 0.6f, CVAR_ARCHIVE)
@@ -172,15 +174,31 @@ DMenu::DMenu(DMenu *parent)
 
 bool DMenu::CallResponder(event_t *ev)
 {
-	IFVIRTUAL(DMenu, Responder)
+	if (ev->type == EV_GUI_Event)
 	{
-		VMValue params[] = { (DObject*)this, ev};
-		int retval;
-		VMReturn ret(&retval);
-		GlobalVMStack.Call(func, params, 2, &ret, 1, nullptr);
-		return !!retval;
+		IFVIRTUAL(DMenu, OnUIEvent)
+		{
+			FUiEvent e = ev;
+			VMValue params[] = { (DObject*)this, &e };
+			int retval;
+			VMReturn ret(&retval);
+			GlobalVMStack.Call(func, params, 2, &ret, 1, nullptr);
+			return !!retval;
+		}
 	}
-	else return false;
+	else
+	{
+		IFVIRTUAL(DMenu, OnInputEvent)
+		{
+			FInputEvent e = ev;
+			VMValue params[] = { (DObject*)this, &e };
+			int retval;
+			VMReturn ret(&retval);
+			GlobalVMStack.Call(func, params, 2, &ret, 1, nullptr);
+			return !!retval;
+		}
+	}
+	return false;
 }
 
 //=============================================================================
@@ -411,6 +429,11 @@ void M_SetMenu(FName menu, int param)
 		C_DoCommand("menu_quit");
 		return;
 
+	case NAME_EndGameMenu:
+		// The separate menu class no longer exists but the name still needs support for existing mods.
+		void ActivateEndGameMenu();
+		ActivateEndGameMenu();
+		return;
 	}
 
 	// End of special checks
@@ -466,7 +489,7 @@ void M_SetMenu(FName menu, int param)
 	}
 	else
 	{
-		const PClass *menuclass = PClass::FindClass(menu);
+		PClass *menuclass = PClass::FindClass(menu);
 		if (menuclass != nullptr)
 		{
 			if (menuclass->IsDescendantOf("GenericMenu"))
@@ -491,7 +514,7 @@ DEFINE_ACTION_FUNCTION(DMenu, SetMenu)
 {
 	PARAM_PROLOGUE;
 	PARAM_NAME(menu);
-	PARAM_INT(mparam);
+	PARAM_INT_DEF(mparam);
 	M_SetMenu(menu, mparam);
 	return 0;
 }
@@ -577,6 +600,9 @@ bool M_Responder (event_t *ev)
 		}
 		else if (menuactive != MENU_WaitKey && (ev->type == EV_KeyDown || ev->type == EV_KeyUp))
 		{
+			// eat blocked controller events without dispatching them.
+			if (ev->data1 >= KEY_FIRSTJOYBUTTON && m_blockcontrollers) return true;
+
 			keyup = ev->type == EV_KeyUp;
 
 			ch = ev->data1;
@@ -787,7 +813,16 @@ void M_ClearMenus()
 
 void M_Init (void) 
 {
-	M_ParseMenuDefs();
+	try
+	{
+		M_ParseMenuDefs();
+	}
+	catch (CVMAbortException &err)
+	{
+		err.MaybePrintMessage();
+		Printf("%s", err.stacktrace.GetChars());
+		I_FatalError("Failed to initialize menus");
+	}
 	M_CreateMenus();
 }
 
