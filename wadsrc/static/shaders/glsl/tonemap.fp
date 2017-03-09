@@ -76,6 +76,15 @@ vec3 Tonemap(vec3 color)
 	return texelFetch(PaletteLUT, ivec2(tx, ty), 0).rgb;
 }
 
+#elif defined(NOIR)
+
+vec3 Tonemap(vec3 color)
+{
+   vec3 grayXfer = vec3(0.3, 0.59, 0.11);
+   vec3 gray = vec3(dot(grayXfer, color));
+   return mix(color, gray, 1.0);
+}
+
 #else
 #error Tonemap mode define is missing
 #endif
